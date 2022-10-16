@@ -1,5 +1,11 @@
 # Visual Studio 2015 user specific files
 .vs/
+Plugins/
+Content/Blueprint
+Content/ExampleContent
+Content/Map
+Content/ParagonGideon
+Content/ParagonMinions
 
 # Compiled Object files
 *.slo
