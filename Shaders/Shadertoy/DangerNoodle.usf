@@ -1,0 +1,6 @@
+#include "/Shaders/Shadertoy/DangerNoodleCommon.usf"
+Texture2D Chanel0;
+Texture2D Chanel1;
+float2 fragCoord;
+float4 iMouse;
+return mainImage(fragCoord,iMouse);

@@ -16,7 +16,9 @@ void AMyActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	//extern ENGINE_API float GAverageFPS;
 
+	
 	/*auto TempObj = NewObject<UObject>();
 	TempObj->AddToRoot();
 	TempObj->RemoveFromRoot();*/

@@ -1,0 +1,6 @@
+#include "/Shaders/SnailCommon.usf"
+float2 snailUV;
+float2 iResolution;
+float snailTime;
+sampler2D iChannel2;
+return SnailImage(snailUV,iResolution,snailTime);

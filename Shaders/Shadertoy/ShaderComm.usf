@@ -1,0 +1,11 @@
+#pragma once
+
+#define iTime View.GameTime
+#define iResolution  View.ViewSizeAndInvSize.xy
+
+float4 GetTextureRGB(float2 uv,Texture2D text, SamplerState ss)
+{
+    return Texture2DSampleBias(
+    text,ss,
+    MaterialFloat2(uv.x,uv.y),View.MaterialTextureMipBias);
+}

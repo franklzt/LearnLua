@@ -1,0 +1,30 @@
+#pragma once
+
+float DistLine(float3 ro, float3 rd, float3 p) 
+{
+   return length(cross(p-ro, rd))/length(rd);
+}
+
+float4 mainImage(float2 fragCoord,float4 iMouse)
+{
+
+    float2 iResolution = View.ViewSizeAndInvSize.xy;
+    float iTime = View.GameTime;
+
+    // Normalized pixel coordinates (from 0 to 1)
+    float2 uv = fragCoord.xy / iResolution.xy;
+    uv -= 0.5;
+    uv.x *= iResolution.x / iResolution.y;
+    
+    float3 ro = float3(0., 0., -2.);
+    float3 rd = float3(uv.x, uv.y, 0.)-ro;
+    
+    float t = iTime;
+        
+    float3 p = float3(sin(t), 0.0, 1.0+cos(t));
+    float d = DistLine(ro, rd, p);
+    
+    d = smoothstep(.1, .09, d);
+    
+    return float4(d,d,d,1.0);
+}

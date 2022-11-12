@@ -1,0 +1,5 @@
+Texture2D Chanel0;
+float2 UV;
+return Texture2DSampleBias(
+    Material.Texture2D_0,Material.Texture2D_0Sampler,
+    MaterialFloat2(UV.x,UV.y),View.MaterialTextureMipBias).rgb;

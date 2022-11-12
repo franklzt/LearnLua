@@ -1,0 +1,11 @@
+
+#pragma once
+float4 mainImage(FMaterialPixelParameters Parameters,Texture2D Chanel,SamplerState ChanelSampler,float2 fragCoord)
+{
+    MaterialFloat2 Local0 = MaterialFloat2(fragCoord.x,fragCoord.y);
+    MaterialFloat Local1 = MaterialStoreTexCoordScale(Parameters, DERIV_BASE_VALUE(Local0), 1);
+    MaterialFloat4 Local2 = ProcessMaterialColorTextureLookup(Texture2DSample(Chanel,ChanelSampler,DERIV_BASE_VALUE(Local0)));
+    MaterialFloat Local3 = MaterialStoreTexSample(Parameters, Local2, 1);
+    MaterialFloat3 Chanel_rgb = lerp(Local2.rgb,Material.PreshaderBuffer[1].yzw,Material.PreshaderBuffer[1].x);
+    return float4(Chanel_rgb.x,Chanel_rgb.y,Chanel_rgb.z,1.0);
+}

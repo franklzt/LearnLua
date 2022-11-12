@@ -1,0 +1,28 @@
+#pragma once
+
+float sun(float2 uv, float battery,float time)
+{
+    float val = smoothstep(0.3, 0.29, length(uv));
+ 	float bloom = smoothstep(0.7, 0.0, length(uv));
+    float cut = 3.0 * sin(( uv.y + time * 0.2 * (battery + 0.02)) * 100.0)
+				+ clamp(uv.y * 14.0 + 1.0, -6.0, 6.0);
+   
+    cut = clamp(cut, 0.0, 1.0);
+
+    return clamp(val * cut, 0.0, 1.0) + bloom * 0.6;
+}
+
+float2 GetModifyUV(float2 UV)
+{
+    float y = 1- UV.y;
+    float2 newUV = float2(UV.x,y);
+    return  newUV - float2(0.5,0.5);
+}
+
+float3 DrawCircle(float2 pos,float Time)
+{
+    float dist1 = length(pos);
+    dist1 = frac((dist1 * 5.0) - frac(Time));
+    float3 finalColor =  float3(dist1,dist1,dist1);
+    return finalColor;
+}

@@ -1,0 +1,114 @@
+#pragma once
+#define TMIN 0.1
+#define TMAX 150.
+#define RAYMARCH_TIME 128
+#define PRECISION .001
+#define AA 3
+#define PI 3.14159265
+
+
+#define iResolution  View.ViewSizeAndInvSize.xy
+//#define  iTime  View.GameTime
+#define  iTime  1.0 
+
+float2 fixUV(in float2 c) {
+    return (2. * c - iResolution.xy) / min(iResolution.x, iResolution.y);
+}
+
+float sdfSphere(in float3 p) {
+    return length(p) - 1.;
+}
+
+float sdfPlane(in float3 p) {
+    return p.y;
+}
+
+float map(in float3 p) {
+    float d = sdfSphere(p);
+    d = min(d, sdfPlane(p + float3(0., 1., 0.)));
+    return d;
+}
+
+float rayMarch(in float3 ro, in float3 rd) {
+    float t = TMIN;
+    for(int i = 0; i < RAYMARCH_TIME && t < TMAX; i++) {
+        float3 p = ro + t * rd;
+        float d = map(p);
+        if(d < PRECISION)
+            break;
+        t += d;
+    }
+    return t;
+}
+
+// https://iquilezles.org/articles/normalsSDF
+float3 calcNormal(in float3 p) {
+    const float h = 0.0001;
+    const float2 k = float2(1, -1);
+    return normalize(k.xyy * map(p + k.xyy * h) +
+        k.yyx * map(p + k.yyx * h) +
+        k.yxy * map(p + k.yxy * h) +
+        k.xxx * map(p + k.xxx * h));
+}
+
+float3x3 setCamera(float3 ta, float3 ro, float cr) {
+    float3 z = normalize(ta - ro);
+    float3 cp = float3(sin(cr), cos(cr), 0.);
+    float3 x = normalize(cross(z, cp));
+    float3 y = cross(x, z);
+    return float3x3(x, y, z);
+}
+
+// https://iquilezles.org/articles/rmshadows
+float softShadow(in float3 ro, in float3 rd, float k) {
+    float res = 1.0;
+    float ph = 1e20;
+    for(float t = TMIN; t < TMAX;) {
+        float h = map(ro + rd * t);
+        if(h < 0.001)
+            return 0.0;
+        float y = h * h / (2.0 * ph);
+        float d = sqrt(h * h - y * y);
+        res = min(res, k * d / max(0.0, t - y));
+        ph = h;
+        t += h;
+    }
+    return res;
+}
+
+float3 render(float2 uv,float4 iMouse) {
+    float3 color = 0.0;
+    float3 ro = float3(4. * cos(iTime), 1., 4. * sin(iTime));
+    if(iMouse.z > 0.01) {
+        float theta = iMouse.x / iResolution.x * 2. * PI;
+        ro = float3(4. * cos(theta), 1., 4. * sin(theta));
+    }
+    float3 ta = 0.0;
+    float3x3 cam = setCamera(ta, ro, 0.);
+    float rt = normalize(mul(cam,float3(uv, 1.)));
+    float3 rd = float3(rt,rt,rt);
+    float t = rayMarch(ro, rd);
+    if(t < TMAX) {
+        float3 p = ro + t * rd;
+        float3 n = calcNormal(p);
+        float3 light = float3(2., 3., 0.);
+        float dif = clamp(dot(normalize(light - p), n), 0., 1.);
+        p += PRECISION * n;
+        dif *= softShadow(p, normalize(light - p), 10.);
+        float amb = 0.5 + 0.5 * dot(n, float3(0., 1., 0.));
+        color = amb * float3(0.23,0.23,0.23);// + dif * float3(1.,1.0,1.0);
+    }
+    return sqrt(color);
+}
+
+float4 mainImage(float2 fragCoord,float4 iMouse) {
+    float3 color = 0.;
+    for(int m = 0; m < AA; m++) {
+        for(int n = 0; n < AA; n++) {
+            float2 offset = 2. * (float2(float(m), float(n)) / float(AA) - .5);
+            float2 uv = fixUV(fragCoord + offset);
+            color += render(uv,iMouse);
+        }
+    }
+   return float4(color / float(AA * AA), 1.);
+}

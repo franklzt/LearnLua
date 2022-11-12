@@ -1,0 +1,4 @@
+#include "/Shaders/TextureTestCommon.usf"
+Texture2D Chanel;
+float2 fragCoord;
+return mainImage(Parameters,Chanel,ChanelSampler,fragCoord);

@@ -1,0 +1,11 @@
+#include "/Shaders/ShareCommon.usf"
+cbuffer myObject
+{       
+    float4x4 matWorld;
+    float3   vObjectPosition;
+    int      arrayIndex;
+}
+float iTime;
+return 1.0;
+
+

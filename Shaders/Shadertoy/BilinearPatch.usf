@@ -1,0 +1,5 @@
+#include "/Shaders/Shadertoy/BilinearPatchCommon.usf"
+float2 fragCoord;
+float4 iMouse;
+Texture2D Chanel0;
+return mainImage(fragCoord,iMouse);

@@ -1,0 +1,142 @@
+#pragma once
+// "DogBone Perimeter Function" by Martijn Steinrucken aka BigWings/CountFrolic - 2019
+// The MIT License
+// Copyright © 2019 Martijn Steinrucken
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// Email: countfrolic@gmail.com
+// Twitter: @The_ArtOfCode
+// YouTube: youtube.com/TheArtOfCodeIsCool
+// Facebook: https://www.facebook.com/groups/theartofcode/
+//
+// Perimeter Function
+//
+// While playing around with this distance function I figured I'd try
+// to parametrize the perimeter of the shape as well as the distance
+// this way you can uniquely map the entire space. I figure this could
+// be very handy for the creation of different effects.
+//
+// Similar to how you can get the progress around the perimeter of a
+// circle by using the atan2 function, you can get the progress around
+// the perimeter of this DogBone by using its perimeter function. The
+// perimeter is a sum of  circle arc lengths that are normalized so as
+// to equalize stretch. NOTE: stretch is only equalized at the zero
+// distance isoline, you will get stretch when you move away from that.
+//
+// The signed distance and perimeter functions map the entire plane and
+// allow you to bend anything around the object or, when elevated to 3d,
+// would allow ray marching in bent space.
+//
+// I'd love to see perimeter functions for other primitives. It's an
+// open area and many of these functions should not be too hard to find.
+
+#define PI 3.141593
+#define TWOPI 6.283185
+#define HALFPI 1.570796
+
+
+#define iResolution  View.ViewSizeAndInvSize.xy
+#define  iTime  View.GameTime
+
+// returns just the distance
+float sdDogBone(float2 p, float w, float r, float b) {
+    // https://www.shadertoy.com/view/3lcGRB
+    // p = point to evaluate
+    // w = half distance between end points
+    // r = radius of endpoints
+    // b = bulge -> -1 = pinch to center 0 = straight >0 = bulge out
+    
+    if(abs(b)<1e-7) b = 1e-7;	// prevent division by 0
+    float sb = sign(b);
+    
+    p = abs(p);
+    
+    float2 ep = p-float2(w, 0);			// end point
+    float dE = length(ep)-r;		// distance to end circle
+    float y = (w*w-r*r)/(2.*r*b);	// height of center circle
+    float2 cp = float2(p.x, p.y-y);		// position of center circle
+    float2 ec = sb*(ep-cp);			// float from end point to center point
+    float rc = length(ec)-r*sb;		// radius of center circle
+    float dC = sb*(rc-length(cp));	// distance to center circle
+    
+    return ec.x*ep.y-ec.y*ep.x < 0. ? dE : dC;
+}
+
+// returns distance and perimeter
+float2 sdpDogBone(float2 p, float w, float r, float b) {
+    //https://www.shadertoy.com/view/3lcGRB
+    // p = point to evaluate
+    // w = half distance between end points
+    // r = radius of endpoints
+    // b = bulge -> -1 = pinch to center 0 = straight >0 = bulge out
+    // returns (perimeter angle, distance)
+    
+    w = max(w, r);
+    if(abs(b)<1e-3) b = 1e-3;	// prevent division by 0
+    float sb = sign(b);
+    float2 P = sign(p);
+    p = abs(p);
+    
+    float2 ep = p-float2(w, 0);			// end point
+    float dE = length(ep)-r;		// distance to end circle
+    float y = (w*w-r*r)/(2.*r*b);	// height of center circle
+    float2 cp = float2(p.x, p.y-y);		// position of center circle
+    float2 ec = sb*(ep-cp);			// float from end point to center point
+    float rc = length(ec)-r*sb;		// radius of center circle
+    float dC = sb*(rc-length(cp));	// distance to center circle
+    
+    // Perimeter calculation starts here
+    
+    float beta = atan2(w/y,w/y),			// center angle 
+    		B = 2.*beta*rc,			// length of middle segment
+    		alpha = PI*.5-beta,		// end angle
+    		A = sb*(PI-alpha)*r*2.,	// length of end segments
+    		len = 2.*(B + A),		// length of total perimeter
+        	a=P.x*P.y, 				// perimeter angle -> flip direction per quadrant so its continuous
+        	d; 						// distance
+  
+    if(ec.x*ep.y-ec.y*ep.x < 0.) {  // end caps
+        a *= atan2(ep.y, ep.x);		// get angle, swapped coords so rollover is hidden
+        a += PI-alpha;				// +PI to get positive -alpha to change starting pos
+        a /= TWOPI;					// 0 to 1 range
+        a /= 1.-alpha/PI;			// stretch so segment goes from 0 to 1
+        a = a*A+max(P.x, 0.)*(A+B);	// a*A is current segment. The rest is segments that came before
+        d = dE;
+    } else {						// center
+        a *= -sb*atan2(cp.x, -sb*cp.y);	// manipulated to hide rollover
+        a = (a+beta)/(2.*beta);		// offset and scale so segment goes from 0 to 1
+        a = a*B+A+max(P.y, 0.)*(A+B);// placing, taking preceding segments into account
+        d = dC;
+        r = rc;
+    }
+    a = 1.-a/len; // flip clockwise and normalize by dividing by the perimeter length
+    return float2(a, d);		
+}
+
+
+
+float4 mainImage(in float2 fragCoord,float4 iMouse )
+{
+    float2 uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
+	float2 M = (iMouse.xy-.5*iResolution.xy)/iResolution.xy;
+    float t = iTime*.5;
+    
+    uv *= 2.;
+    
+   // float d = sdDogBone(uv, .75+sin(t)*.25, .25, sin(t));
+    float2 b = sdpDogBone(uv, .75+sin(t)*.25+M.x, .25+sin(t)*.0, sin(t));
+   
+    float distance = b.y;
+    float perimeter = b.x;
+    
+    // coloring from IQ
+    float3 col = float3(1.0,1.0,1.0) - sign(distance)*float3(0.1,0.4,0.7);
+	col *= 1.0 - exp(-4.0*abs(distance));
+	col *= 0.7 + 0.2*cos(110.0*distance);
+
+    
+
+    float id = floor(perimeter*5.);
+    col += smoothstep(.01, -.01, abs(distance)-.01)*frac(perimeter*20.-t*2.);
+   
+    return float4(col,1.0);
+}

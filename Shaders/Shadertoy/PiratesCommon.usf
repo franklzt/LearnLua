@@ -1,0 +1,86 @@
+#pragma once
+
+#include "ShaderComm.usf"
+
+// Created by inigo quilez - iq/2014
+//   https://www.youtube.com/c/InigoQuilez
+//   https://iquilezles.org/
+// Creative Commons license.
+
+
+// A simple and cheap 2D shader to accompany the Pirates of the Caribean music.
+
+
+float fbm( float2 p,Texture2D Chanel1, SamplerState Chanel1Sampler)
+{
+    return  GetTextureRGB(p*1.00,Chanel1,Chanel1Sampler).x * 0.5000 +
+            GetTextureRGB(p*2.02,Chanel1,Chanel1Sampler).x * 0.2500 +
+            GetTextureRGB(p*4.03,Chanel1,Chanel1Sampler).x * 0.1250 +
+            GetTextureRGB(p*8.04,Chanel1,Chanel1Sampler).x * 0.0625;
+}
+
+float4 mainImage(FMaterialPixelParameters Parameters,float2 fragCoord,float4 iMouse,float iFrame,
+Texture2D Chanel0, SamplerState Chanel0Sampler ,
+Texture2D Chanel1, SamplerState Chanel1Sampler)
+{
+    float time = fmod( iTime, 60.0 );
+	float2 p = (2.0*fragCoord-iResolution.xy) / iResolution.y;
+    float2 i = p;
+
+    // camera
+    p -= float2(1.0,3.0)*0.001*2.0*cos( iTime*5.0 + float2(0.0,1.5) );    
+    p -= float2(1.0,3.0)*0.001*1.0*cos( iTime*9.0 + float2(1.0,4.5) );    
+    float an = 0.3*sin( 0.1*time );
+    float co = cos(an);
+    float si = sin(an);
+    p = mul(float2x2( -co, si, -si, -co ),p)*0.85;
+    
+    // water
+    float2 q = float2(p.x,1.0)/p.y;
+    q.y -= 0.9*time;    
+    float2 off = GetTextureRGB(0.1*q*float2(1.0,2.0) - float2(0.0,0.007*iTime),Material.Texture2D_0,Material.Texture2D_0Sampler).xy;
+    q += 0.4*(-1.0 + 2.0*off);
+
+    float3 col = 0.2*sqrt(GetTextureRGB(0.05*q*float2(1.0,4.0) + float2(0.0,0.01*iTime),Material.Texture2D_0,Material.Texture2D_0Sampler).zyx);
+    float re = 1.0-smoothstep( 0.0, 0.7, abs(p.x-0.6) - abs(p.y)*0.5+0.2 );
+    col += 1.0*float3(1.0,0.9,0.73)*re*0.2*(0.1+0.9*off.y)*5.0*(1.0-col.x);
+    float re2 = 1.0-smoothstep( 0.0, 2.0, abs(p.x-0.6) - abs(p.y)*0.85 );
+    col += 0.7*re2*smoothstep(0.35,1.0,GetTextureRGB(0.075*q *float2(1.0,4.0),Material.Texture2D_0,Material.Texture2D_0Sampler).x);
+    
+    // sky
+    float3 sky = float3(0.0,0.05,0.1)*1.4;
+    // stars    
+   
+
+    float tempX = GetTextureRGB(0.25*p,Chanel1,Chanel1Sampler).x;
+    sky += 0.5*smoothstep( 0.95,1.00,tempX);
+    sky += 0.5*smoothstep( 0.85,1.0,tempX);
+    sky += 0.2*pow(1.0-max(0.0,p.y),2.0);
+    // clouds    
+    float f = fbm( 0.002*float2(p.x,1.0)/p.y,Chanel1,Chanel1Sampler);
+    float3 cloud = float3(0.3,0.4,0.5)*0.7*(1.0-0.85*smoothstep(0.4,1.0,f));
+    sky = lerp( sky, cloud, 0.95*smoothstep( 0.4, 0.6, f ) );
+    sky = lerp( sky, float3(0.33,0.34,0.35), pow(1.0-max(0.0,p.y),2.0) );
+    col = lerp( col, sky, smoothstep(0.0,0.1,p.y) );
+
+    // horizon
+    col += 0.1*pow(clamp(1.0-abs(p.y),0.0,1.0),9.0);
+
+    // moon
+    float d = length(p-float2(0.6,0.5));
+    float3 moon = float3(0.98,0.97,0.95)*(1.0-0.1*smoothstep(0.2,0.5,f));
+    col += 0.8*moon*exp(-4.0*d)*float3(1.1,1.0,0.8);
+    col += 0.2*moon*exp(-2.0*d);
+    moon *= 0.85+0.15*smoothstep(0.25,0.7,fbm(0.05*p+0.3,Chanel1,Chanel1Sampler));
+    col = lerp( col, moon, 1.0-smoothstep(0.2,0.22,d) );
+    
+    // postprocess
+    col = pow( 1.4*col, float3(1.5,1.2,1.0) );    
+    col *= clamp(1.0-0.3*length(i), 0.0, 1.0 );
+
+    // fade
+    col *=       smoothstep( 3.0, 6.0,time);
+    col *= 1.0 - smoothstep(44.0,50.0,time);
+
+   return float4( col, 1.0 );
+}

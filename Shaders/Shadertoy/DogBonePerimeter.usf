@@ -1,0 +1,4 @@
+#include "/Shaders/Shadertoy/DogBonePerimeterCommon.usf"
+float2 fragCoord;
+float4 iMouse;
+return mainImage(fragCoord,iMouse);

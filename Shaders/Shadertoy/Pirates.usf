@@ -1,0 +1,7 @@
+#include "/Shaders/Shadertoy/PiratesCommon.usf"
+float2 fragCoord;
+float4 iMouse;
+float iFrame;
+Texture2D Chanel0;
+Texture2D Chanel1;
+return mainImage(Parameters,fragCoord,iMouse,iFrame, Chanel0,  Chanel0Sampler , Chanel1,  Chanel1Sampler);

@@ -1,8 +1,8 @@
 {
     "tags": {
         "advance": false,
-        "intermediate": false,
-        "basic": false
+        "basic": false,
+        "intermediate": false
     },
     "rules": {}
 }

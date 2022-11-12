@@ -1,0 +1,161 @@
+
+#pragma once
+#include "ShaderComm.usf"
+
+// The Universe Within - by Martijn Steinrucken aka BigWings 2018
+// Email:countfrolic@gmail.com Twitter:@The_ArtOfCode
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+
+// After listening to an interview with Michael Pollan on the Joe Rogan
+// podcast I got interested in mystic experiences that people seem to
+// have when using certain psycoactive substances. 
+//
+// For best results, watch fullscreen, with music, in a dark room.
+// 
+// I had an unused 'blockchain effect' lying around and used it as
+// a base for this effect. Uncomment the SIMPLE define to see where
+// this came from.
+// 
+// Use the mouse to get some 3d parallax.
+
+// Music - Terrence McKenna Mashup - Jason Burruss Remixes
+// https://soundcloud.com/jason-burruss-remixes/terrence-mckenna-mashup
+//
+// YouTube video of this effect:
+// https://youtu.be/GAhu4ngQa48
+//
+// YouTube Tutorial for this effect:
+// https://youtu.be/3CycKKJiwis
+
+
+#define S(a, b, t) smoothstep(a, b, t)
+#define NUM_LAYERS 4.
+
+//#define SIMPLE
+
+
+float N21(float2 p) {
+	float3 a = frac(float3(p.xyx) * float3(213.897, 653.453, 253.098));
+    a += dot(a, a.yzx + 79.76);
+    return frac((a.x + a.y) * a.z);
+}
+
+float2 GetPos(float2 id, float2 offs, float t) {
+    float n = N21(id+offs);
+    float n1 = frac(n*10.);
+    float n2 = frac(n*100.);
+    float a = t+n;
+    return offs + float2(sin(a*n1), cos(a*n2))*.4;
+}
+
+float GetT(float2 ro, float2 rd, float2 p) {
+	return dot(p-ro, rd); 
+}
+
+float LineDist(float3 a, float3 b, float3 p) {
+	return length(cross(b-a, p-a))/length(p-a);
+}
+
+float df_line( in float2 a, in float2 b, in float2 p)
+{
+    float2 pa = p - a, ba = b - a;
+	float h = clamp(dot(pa,ba) / dot(ba,ba), 0., 1.);	
+	return length(pa - ba * h);
+}
+
+float lines(float2 a, float2 b, float2 uv) {
+    float r1 = .04;
+    float r2 = .01;
+    
+    float d = df_line(a, b, uv);
+    float d2 = length(a-b);
+    float fade = S(1.5, .5, d2);
+    
+    fade += S(.05, .02, abs(d2-.75));
+    return S(r1, r2, d)*fade;
+}
+
+float NetLayer(float2 st, float n, float t) {
+    float2 id = floor(st)+n;
+
+    st = frac(st)-.5;
+   
+    float2 p[9];
+    int i=0;
+    for(float y=-1.; y<=1.; y++) {
+    	for(float x=-1.; x<=1.; x++) {
+            p[i++] = GetPos(id, float2(x,y), t);
+    	}
+    }
+    
+    float m = 0.;
+    float sparkle = 0.;
+    
+    for(i=0; i<9; i++) {
+        m += lines(p[4], p[i], st);
+
+        float d = length(st-p[i]);
+
+        float s = (.005/(d*d));
+        s *= S(1., .7, d);
+        float pulse = sin((frac(p[i].x)+frac(p[i].y)+t)*5.)*.4+.6;
+        pulse = pow(pulse, 20.);
+
+        s *= pulse;
+        sparkle += s;
+    }
+    
+    m += lines(p[1], p[3], st);
+	m += lines(p[1], p[5], st);
+    m += lines(p[7], p[5], st);
+    m += lines(p[7], p[3], st);
+    
+    float sPhase = (sin(t+n)+sin(t*.1))*.25+.5;
+    sPhase += pow(sin(t*.1)*.5+.5, 50.)*5.;
+    m += sparkle*sPhase;//(*.5+.5);
+    
+    return m;
+}
+
+float4 mainImage(FMaterialPixelParameters Parameters,float2 fragCoord,float4 iMouse)
+{
+    float2 uv = (fragCoord-iResolution.xy*.5)/max(iResolution.x,iResolution.y);
+	float2 M = iMouse.xy/iResolution.xy-.5;
+    
+    float t = iTime*.1;
+    
+    float s = sin(t);
+    float c = cos(t);
+    float2x2 rot = float2x2(c, -s, s, c);
+    float2 st = mul(uv,rot);  
+	M = mul(M,rot*2.0);
+    
+    float m = 0.;
+    for(float i=0.; i<1.; i+=1./NUM_LAYERS) {
+        float z = frac(t+i);
+        float size = lerp(15., 1., z);
+        float fade = S(0., .6, z)*S(1., .8, z);
+        
+        m += fade * NetLayer(st*size-M*z, i, iTime);
+    }
+    
+	float fft  = 1.;//texelFetch( iChannel0, ifloat2(.7,0), 0 ).x;
+    float glow = uv.y*fft*2.;
+   
+    float3 baseCol = float3(s, cos(t*.4), -sin(t*.24))*.4+.6;
+    float3 col = baseCol*m;
+    col += baseCol*glow;
+    
+    #ifdef SIMPLE
+    uv *= 10.;
+    col = float3(1)*NetLayer(uv, 0., iTime);
+    uv = frac(uv);
+    //if(uv.x>.98 || uv.y>.98) col += 1.;
+    #else
+    col *= 1.-dot(uv,uv);
+    t = fmod(iTime, 230.);
+    col *= S(0., 20., t)*S(224., 200., t);
+    #endif
+    
+    return float4(col,1);
+}

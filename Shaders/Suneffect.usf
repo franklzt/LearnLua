@@ -1,0 +1,5 @@
+#pragma once
+#include "/Shaders/ShaderToyComm.usf"
+float2 SunUV;
+float time;
+return sun(SunUV,1.0,time);
